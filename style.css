@@ -3,3 +3,8 @@ img {
   width: 500px;
   height: 300px;
 }
+
+div.enclosure {
+  border: solid black 10px;
+  margin: 10px;
+}

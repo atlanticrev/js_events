@@ -14,7 +14,7 @@ const whenReady = (function() {
     if (ready) return;
 
     // For IE
-    if (e.type==="readystatechange" && document.readyState !== "complete")
+    if (e.type==='readystatechange' && document.readyState !== 'complete')
       return;
 
     // Вызов функции по очереди при полной  загрузке документа
@@ -30,17 +30,17 @@ const whenReady = (function() {
   // Register handler
   if (document.addEventListener) {
 
-    document.addEventListener("DOMContentLoaded", handler, false);
-    document.addEventListener("readystatechange", handler, false);
-    window.addEventListener("load", handler, false);
+    document.addEventListener('DOMContentLoaded', handler, false);
+    document.addEventListener('readystatechange', handler, false);
+    window.addEventListener('load', handler, false);
 
   }
 
   // For IE
   else if (document.attachEvent) {
 
-    document.attachEvent("onreadystatechange", handler);
-    window.attachEvent("onload", handler);
+    document.attachEvent('onreadystatechange', handler);
+    window.attachEvent('onload', handler);
 
   }
 
@@ -72,7 +72,7 @@ function getScrollOffsets(w) {
   // For IE
   const d = w.document;
 
-  if (document.compatMode === "CSS1Compat") {
+  if (document.compatMode === 'CSS1Compat') {
 
     return {
       x: d.documentElement.scrollLeft,
@@ -183,9 +183,9 @@ function drag(elementToDrag, e) {
     // For IE
     } else if (document.detachEvent) {
 
-      elementToDrag.detachEvent("onlosecapture", upHandler);
-      elementToDrag.detachEvent("onmouseup", upHandler);
-      elementToDrag.detachEvent("onmousemove", moveHandler);
+      elementToDrag.detachEvent('onlosecapture', upHandler);
+      elementToDrag.detachEvent('onmouseup', upHandler);
+      elementToDrag.detachEvent('onmousemove', moveHandler);
       elementToDrag.releaseCapture();
 
     }
@@ -204,7 +204,124 @@ function drag(elementToDrag, e) {
 
 }
 
-// Тестирование
-const dragElement = document.querySelector('img');
+// Обработка события колесика мыши
+function enclose(content, frameWidth, frameHeight, contentX, contentY) {
 
-dragElement.addEventListener('mousedown', drag.bind(null, dragElement));
+  // Начальные настройки размеров фрейма-контейнера и контента
+  frameWidth = Math.max(frameWidth, 50);
+  frameHeight = Math.max(frameHeight, 50);
+  contentX = Math.min(contentX, 0) || 0;
+  contentY = Math.min(contentY, 0) || 0;
+
+  // Создание фрейма-контейнера
+  const frame = document.createElement('div');
+  frame.className = 'enclosure';
+
+  frame.style.width = frameWidth + 'px';
+  frame.style.height = frameHeight + 'px';
+  frame.style.overflow = 'hidden';
+  frame.style.boxSizing = 'border-box';
+
+  content.parentNode.insertBefore(frame, content);
+  frame.appendChild(content);
+
+  // Стили контента
+  content.style.position = 'relative';
+  content.style.left = contentX + 'px';
+  content.style.top = contentY + 'px';
+
+  let isMacWebkit = (navigator.userAgent.indexOf("Macintosh") !== -1 &&
+    navigator.userAgent.indexOf("WebKit") !== -1);
+
+  let isFirefox = (navigator.userAgent.indexOf("Gecko") !== -1);
+
+  // Регистрация обработчика
+  frame.onwheel = wheelHandler;
+  frame.onmousewheel = wheelHandler;
+
+  if (isFirefox)
+    frame.addEventListener("DOMMouseScroll", wheelHandler, false);
+
+  function wheelHandler(e) {
+
+    let deltaX = e.deltaX * -30 ||
+      e.wheelDeltaX / 4 ||
+      0;
+
+    let deltaY = e.deltaY * -30 ||
+      e.wheelDeltaY / 4 ||
+      (e.wheelDeltaY === undefined && e.wheelDelta / 4) ||
+      e.detail * -10 ||
+      0;
+
+    // Корректировка для мышей Apple
+    if (isMacWebkit) {
+      deltaX /= 30;
+      deltaY /= 30;
+    }
+
+    if (isFirefox && e.type !== "DOMMouseScroll")
+      frame.removeEventListener("DOMMouseScroll", wheelHandler, false);
+
+    let contentBox = content.getBoundingClientRect();
+    let contentWidth = contentBox.right - contentBox.left;
+    let contentHeight = contentBox.bottom - contentBox.top;
+
+    if (e.altKey) {
+
+      if (deltaX) {
+
+        frameWidth -= deltaX;
+        frameWidth = Math.min(frameWidth, contentWidth);
+        frameWidth = Math.max(frameWidth, 50);
+        frame.style.width = frameWidth + "px";
+
+      }
+
+      if (deltaY) {
+
+        frameHeight -= deltaY;
+        frameHeight = Math.min(frameHeight, contentHeight);
+        frameHeight = Math.max(frameHeight - deltaY, 50);
+        frame.style.height = frameHeight + "px";
+
+      }
+
+    } else {
+
+      if (deltaX) {
+
+        let minOffset = Math.min(frameWidth - contentWidth, 0);
+        contentX = Math.max(contentX + deltaX, minOffset);
+        contentX = Math.min(contentX, 0);
+
+      }
+
+      if (deltaY) {
+
+        let minOffset = Math.min(frameHeight - contentHeight, 0);
+        contentY = Math.max(contentY + deltaY, minOffset);
+        contentY = Math.min(contentY, 0);
+        content.style.top = contentY + "px";
+
+      }
+
+    }
+
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    e.cancelBubble = true;
+    e.returnValue = false;
+    return false;
+  }
+
+}
+
+// Тестирование
+// const dragElement = document.querySelector('img');
+//
+// dragElement.addEventListener('mousedown', drag.bind(null, dragElement));
+
+whenReady(function() {
+  enclose(document.getElementById('content'), 400, 200, -200, -200);
+});
